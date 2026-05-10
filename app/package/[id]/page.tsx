@@ -160,15 +160,24 @@ export default function TripDetails() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ tripId: id, description, amount: totalAmount, splitDetails: finalSplitDetails, payer: "You" }),
       });
+      
       if (res.ok) {
-  const newExp = await res.json();
-  // Fixed "prev" to "expenses"
-  setExpenses((prevExpenses) => [newExp, ...prevExpenses]); 
-  setDescription(""); 
-  setAmount(""); 
-  setCustomSplits({});
-}
-    } finally { setIsSaving(false); }
+        const newExp = await res.json();
+        setExpenses((prevExpenses) => [newExp, ...prevExpenses]); 
+        setDescription(""); 
+        setAmount(""); 
+        setCustomSplits({});
+      } else {
+        // 🛠️ FIX: Actually show the error if the backend rejects it!
+        const errData = await res.json().catch(() => ({}));
+        alert(`Backend Error: ${errData.message || "Failed to save expense"}`);
+      }
+    } catch (err) { 
+      // 🛠️ FIX: Show network errors!
+      alert("Network Error: Could not connect to the database.");
+    } finally { 
+      setIsSaving(false); 
+    }
   };
 
   const travelerBalances: Record<string, number> = {};

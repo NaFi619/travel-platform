@@ -4,56 +4,68 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// 1. EMERGENCY SCHEMA: Defines the database structure on the fly if you don't have a models/Expense.ts file!
+// 1. THE NEW SCHEMA (Updated to match your actual data)
 const expenseSchema = new mongoose.Schema({
-  userId: { type: String, required: true },
-  title: { type: String, required: true },
+  tripId: { type: String, required: true },
+  description: { type: String, required: true },
   amount: { type: Number, required: true },
-  category: { type: String, default: "Other" },
-  date: { type: String },
+  payer: { type: String, default: "You" },
+  splitDetails: { type: Array, default: [] },
   createdAt: { type: Date, default: Date.now }
+}, { 
+  strict: false, // This ensures it won't crash if extra fields are sent
+  timestamps: true 
 });
 
-// Check if model exists to prevent Next.js overwrite errors
-const Expense = mongoose.models.Expense || mongoose.model("Expense", expenseSchema);
+// 2. THE CACHE BREAKER
+// We use "TripExpense" instead of "Expense" to force Mongoose to use the new rules.
+const Expense = mongoose.models.TripExpense || mongoose.model("TripExpense", expenseSchema);
 
-// GET: Fetch User Expenses
+// GET: Fetch all expenses for a specific trip
 export async function GET(req: Request) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
-    const userId = searchParams.get("userId");
+    const tripId = searchParams.get("tripId");
 
-    if (!userId) return NextResponse.json({ message: "User ID required" }, { status: 400 });
+    if (!tripId) return NextResponse.json({ message: "Trip ID required" }, { status: 400 });
 
-    const expenses = await Expense.find({ userId }).sort({ createdAt: -1 });
-    return NextResponse.json(expenses, { headers: { "Cache-Control": "no-store" } });
+    const expenses = await Expense.find({ tripId }).sort({ createdAt: -1 });
+    return NextResponse.json(expenses);
   } catch (error) {
     return NextResponse.json({ message: "Error fetching expenses" }, { status: 500 });
   }
 }
 
-// POST: Create New Expense
+// POST: Add a new expense
 export async function POST(req: Request) {
   try {
     await connectDB();
     const body = await req.json();
-    const newExpense = await Expense.create(body);
+
+    // Map the incoming data to the schema
+    const newExpense = await Expense.create({
+      tripId: body.tripId,
+      description: body.description,
+      amount: Number(body.amount),
+      payer: body.payer || "You",
+      splitDetails: body.splitDetails || []
+    });
+    
     return NextResponse.json(newExpense, { status: 201 });
-  } catch (error) {
-    return NextResponse.json({ message: "Error saving expense" }, { status: 500 });
+  } catch (error: unknown) {
+    console.error("DEBUG - Save Failed:", error);
+    const message = error instanceof Error ? error.message : "Unknown error";
+    return NextResponse.json({ message }, { status: 500 });
   }
 }
 
-// DELETE: Remove Expense
+// DELETE: Remove an expense
 export async function DELETE(req: Request) {
   try {
     await connectDB();
     const { searchParams } = new URL(req.url);
     const id = searchParams.get("id");
-
-    if (!id) return NextResponse.json({ message: "ID required" }, { status: 400 });
-
     await Expense.findByIdAndDelete(id);
     return NextResponse.json({ message: "Deleted" });
   } catch (error) {
