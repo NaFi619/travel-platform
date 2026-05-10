@@ -60,8 +60,10 @@ export async function PATCH(
 // --- DELETE: Remove a trip ---
 export async function DELETE(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params; // 2. Await the promise
+  const id = resolvedParams.id;
   try {
     await connectDB();
     const { id } = await params;
