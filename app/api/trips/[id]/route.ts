@@ -8,8 +8,10 @@ export const dynamic = "force-dynamic";
 // --- GET: Fetch a single trip ---
 export async function GET(
   req: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
+  const resolvedParams = await params; // 2. Await the promise
+  const id = resolvedParams.id;
   try {
     await connectDB();
     const { id } = await params;
