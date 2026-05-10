@@ -1,12 +1,12 @@
 "use client";
-import { useState } from "react";
+import { useState, Suspense } from "react"; // Added Suspense
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { User, Mail, Lock, ArrowRight, Sparkles, Loader2 } from "lucide-react";
-import FormInput from "@/components/FormInput"; // Optional: Use your new component here
 import { useSearchParams } from "next/navigation";
 
-export default function Signup() {
+// 1. We rename your main component to 'SignupForm' and remove 'export default'
+function SignupForm() {
   const router = useRouter();
   
   const [formData, setFormData] = useState({ name: "", email: "", password: "" });
@@ -30,15 +30,10 @@ export default function Signup() {
       const data = await res.json();
 
       if (res.ok) {
-        // --- THE CRITICAL ADDITION ---
-        // We must save the user data so the Navbar and Dashboard 
-        // know the login was successful.
-        // Inside your Login logic
-localStorage.setItem("user", JSON.stringify({ id: "your-user-id-from-db", name: "Your Name" }));
+        localStorage.setItem("user", JSON.stringify({ id: "your-user-id-from-db", name: "Your Name" }));
         
-        // Success! Go straight to dashboard
         router.push("/dashboard"); 
-        router.refresh(); // Forces the Navbar to re-check localStorage
+        router.refresh(); 
       } else {
         setError(data.message || "Something went wrong");
       }
@@ -73,7 +68,6 @@ localStorage.setItem("user", JSON.stringify({ id: "your-user-id-from-db", name: 
               </div>
             )}
 
-            {/* I updated the text-black and font-medium here for better visibility as you requested */}
             <div className="space-y-2">
               <label className="text-xs font-bold text-slate-400 uppercase tracking-wider ml-1">Full Name</label>
               <div className="relative">
@@ -141,5 +135,20 @@ localStorage.setItem("user", JSON.stringify({ id: "your-user-id-from-db", name: 
         </div>
       </div>
     </main>
+  );
+}
+
+// 2. We create a new default export that wraps the form in a Suspense boundary
+export default function Signup() {
+  return (
+    <Suspense 
+      fallback={
+        <div className="min-h-screen flex items-center justify-center bg-[#f8fafc]">
+          <Loader2 className="animate-spin text-indigo-600" size={40} />
+        </div>
+      }
+    >
+      <SignupForm />
+    </Suspense>
   );
 }
